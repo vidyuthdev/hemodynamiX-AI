@@ -1,0 +1,24 @@
+# Node / Vite
+node_modules
+dist
+.DS_Store
+*.local
+
+# Python
+.venv
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# Pipeline runtime caches and downloaded meshes (multi-GB, regenerated on demand)
+.cache/
+data/anxplore_raw/
+data/cache/
+data/artifacts/
+
+# IDE
+.idea/
+.vscode/
