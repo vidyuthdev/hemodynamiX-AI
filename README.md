@@ -49,7 +49,7 @@ npm run dev
 The first pipeline run downloads ~100 AnXplore VTK meshes (~3 GB, cached).
 Subsequent runs reuse the cache and finish in ~30 s.
 
-## What is "real" here?
+## Real World Implementations
 
 * **Geometries**: 100 published intracranial aneurysm tetrahedral meshes from
   the AnXplore study, downloaded directly from
@@ -65,7 +65,7 @@ Subsequent runs reuse the cache and finish in ~30 s.
   isotonic regression and Platt scaling, real split-conformal prediction
   sets, real TreeSHAP attributions.
 
-What is **not** real:
+Simulation Derived Results:
 
 * Full 3-D Navier-Stokes via OpenFOAM/SimVascular - we use the 1-D Womersley
   reduction (which is what every clinical CFD pipeline uses for screening).
