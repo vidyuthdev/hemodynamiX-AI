@@ -26,6 +26,7 @@ from .cohort import build_cohort, feature_matrix, labels_array
 from .config import FEATURE_KEYS, FEATURE_LABELS, LOCATIONS, PipelineConfig, ensure_dirs
 from .equity import by_location, resolution_stress
 from .explain import shap_global, shap_per_case
+from .fem3d_pass import upgrade_with_fem3d
 from .metrics import (
     auroc,
     best_threshold,
@@ -53,7 +54,13 @@ def _stratified_train_cal_test(y, cfg: PipelineConfig, seed: int):
     return idx_train, idx_cal, idx_test
 
 
-def run(cfg: PipelineConfig, *, no_real: bool = False) -> dict:
+def run(
+    cfg: PipelineConfig,
+    *,
+    no_real: bool = False,
+    solver: str = "womersley",
+    n_fem: int = 0,
+) -> dict:
     ensure_dirs(cfg)
     if no_real:
         cfg.n_real_cases = 0
@@ -61,6 +68,19 @@ def run(cfg: PipelineConfig, *, no_real: bool = False) -> dict:
     t0 = time.time()
     cohort = build_cohort(cfg)
     print(f"[run] cohort built in {time.time()-t0:.1f}s")
+
+    # Optional FEM3D upgrade pass: replace the Womersley features on the top
+    # K AnXplore cases with steady Navier-Stokes results, and render the
+    # headline 4K image for each. Everything downstream (ML, calibration,
+    # SHAP, equity, JSON shape) is unchanged.
+    n_fem_target = n_fem if solver in ("fem3d", "both") else 0
+    if n_fem_target > 0:
+        t_fem = time.time()
+        upgraded = upgrade_with_fem3d(cohort, cfg, n_fem_target)
+        print(
+            f"[run] FEM3D pass: upgraded {len(upgraded)} cases in "
+            f"{time.time() - t_fem:.0f}s ({(time.time()-t_fem)/max(1,len(upgraded)):.1f}s avg)"
+        )
 
     X = feature_matrix(cohort)
     y = labels_array(cohort)
@@ -157,34 +177,44 @@ def run(cfg: PipelineConfig, *, no_real: bool = False) -> dict:
     # ---------------------------------------------------------------- export JSON
     cohort_payload = []
     for c in cohort:
-        cohort_payload.append(
-            {
-                "id": c.case_id,
-                "source": c.source,
-                "location": c.location,
-                "label": c.label,
-                "labelClean": c.label_clean,
-                "features": {k: float(c.features[k]) for k in FEATURE_KEYS},
-                "morphology": {
-                    "aspectRatio": float(c.morphology.aspect_ratio),
-                    "sizeRatio": float(c.morphology.size_ratio),
-                    "sphericity": float(c.morphology.sphericity),
-                    "undulationIndex": float(c.morphology.undulation_index),
-                    "bulgeAmplitude": float(c.morphology.bulge_amplitude),
-                    "tortuosity": float(c.morphology.tortuosity),
-                    "centerlineLength": float(c.morphology.centerline_length),
-                    "surfaceArea": float(c.morphology.surface_area),
-                    "volume": float(c.morphology.volume),
-                },
-            }
-        )
+        entry = {
+            "id": c.case_id,
+            "source": c.source,
+            "location": c.location,
+            "label": c.label,
+            "labelClean": c.label_clean,
+            "solver": c.solver,
+            "features": {k: float(c.features[k]) for k in FEATURE_KEYS},
+            "morphology": {
+                "aspectRatio": float(c.morphology.aspect_ratio),
+                "sizeRatio": float(c.morphology.size_ratio),
+                "sphericity": float(c.morphology.sphericity),
+                "undulationIndex": float(c.morphology.undulation_index),
+                "bulgeAmplitude": float(c.morphology.bulge_amplitude),
+                "tortuosity": float(c.morphology.tortuosity),
+                "centerlineLength": float(c.morphology.centerline_length),
+                "surfaceArea": float(c.morphology.surface_area),
+                "volume": float(c.morphology.volume),
+            },
+        }
+        if c.cfd3d_image:
+            entry["cfd3dImage"] = c.cfd3d_image
+        if c.cfd3d_summary:
+            entry["cfd3dSummary"] = c.cfd3d_summary
+        cohort_payload.append(entry)
 
-    # Pull the highest-risk case with a stored grid/centerline for the CFD inspector
-    cases_with_grid = [c for c in cohort if c.grid]
-    if cases_with_grid:
-        focus = max(cases_with_grid, key=lambda c: c.morphology.bulge_amplitude)
+    # Prefer a FEM3D-upgraded case as the headline focus when available, so
+    # the React inspector shows the real 3-D rendering. Fall back to the
+    # highest-risk case with a stored Womersley grid/centerline.
+    fem3d_cases = [c for c in cohort if c.solver == "fem3d" and c.cfd3d_image]
+    if fem3d_cases:
+        focus = max(fem3d_cases, key=lambda c: c.morphology.bulge_amplitude)
     else:
-        focus = cohort[0]
+        cases_with_grid = [c for c in cohort if c.grid]
+        if cases_with_grid:
+            focus = max(cases_with_grid, key=lambda c: c.morphology.bulge_amplitude)
+        else:
+            focus = cohort[0]
 
     out = {
         "version": "1.0.0",
@@ -243,13 +273,16 @@ def run(cfg: PipelineConfig, *, no_real: bool = False) -> dict:
             "source": focus.source,
             "location": focus.location,
             "label": focus.label,
+            "solver": focus.solver,
             "morphology": cohort_payload[[c.case_id for c in cohort].index(focus.case_id)]["morphology"],
             "narrativeBullets": _build_narrative(focus),
             "uncertaintySummary": _build_uncertainty_summary(focus, conformal),
-            "modalityNote": "Reduced-order Womersley pulsatile CFD on real AnXplore mesh + parametric augmentation. Demonstration only - not for clinical use.",
+            "modalityNote": _modality_note(focus),
             "grid": focus.grid,
             "centerline": focus.centerline,
             "radiusProfile": focus.radius_profile,
+            "cfd3dImage": focus.cfd3d_image,
+            "cfd3dSummary": focus.cfd3d_summary,
         },
     }
 
@@ -284,12 +317,40 @@ def _build_uncertainty_summary(focus, conformal) -> str:
     )
 
 
+def _modality_note(focus) -> str:
+    if focus.solver == "fem3d":
+        return (
+            "Steady 3-D incompressible Navier-Stokes (Taylor-Hood P2/P1, Picard) on the real "
+            "AnXplore tetrahedral fluid domain. Wall colored by computed WSS; streamlines seeded "
+            "at the inlet plane. Demonstration only - not for clinical use."
+        )
+    return (
+        "Reduced-order Womersley pulsatile CFD on real AnXplore mesh + parametric augmentation. "
+        "Demonstration only - not for clinical use."
+    )
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--no-real", action="store_true", help="skip AnXplore download")
     p.add_argument("--seed", type=int, default=13)
     p.add_argument("--n-real", type=int, default=90)
     p.add_argument("--n-synth", type=int, default=220)
+    p.add_argument(
+        "--solver",
+        choices=("womersley", "fem3d", "both"),
+        default="womersley",
+        help="womersley = fast 1-D analytic CFD on every case; "
+             "fem3d/both = additionally run steady 3-D Navier-Stokes + render "
+             "the headline image on the top --n-fem AnXplore cases.",
+    )
+    p.add_argument(
+        "--n-fem",
+        type=int,
+        default=0,
+        help="Number of AnXplore cases to upgrade with the steady 3-D NS solver "
+             "(only used when --solver=fem3d or both).",
+    )
     args = p.parse_args(argv)
 
     cfg = PipelineConfig(
@@ -297,7 +358,7 @@ def main(argv=None) -> int:
         n_real_cases=args.n_real,
         n_synthetic_cases=args.n_synth,
     )
-    run(cfg, no_real=args.no_real)
+    run(cfg, no_real=args.no_real, solver=args.solver, n_fem=args.n_fem)
     return 0
 
 

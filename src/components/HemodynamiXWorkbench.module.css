@@ -150,6 +150,93 @@
   .cfdGrid {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
+
+  .cfd3dCard {
+    grid-column: 1 / -1;
+  }
+}
+
+.cfd3dCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cfd3dHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.solverBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fde68a;
+  background: rgba(217, 119, 6, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.cfd3dFigure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cfd3dImage {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: calc(var(--radius) - 4px);
+  border: 1px solid var(--border);
+  background: #ffffff;
+}
+
+.cfd3dCaption {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.cfd3dStats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px 18px;
+  margin: 6px 0 0;
+  padding: 12px 14px;
+  border-radius: calc(var(--radius) - 4px);
+  border: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.55);
+  font-variant-numeric: tabular-nums;
+}
+
+.cfd3dStats > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cfd3dStats dt {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cfd3dStats dd {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
 }
 
 .h2 {

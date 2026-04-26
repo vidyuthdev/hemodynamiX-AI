@@ -191,6 +191,74 @@ export function HemodynamiXWorkbench() {
 
         {tab === "cfd" && (
           <div className={styles.cfdGrid}>
+            {focus.cfd3dImage ? (
+              <div className={`${styles.card} ${styles.cfd3dCard}`}>
+                <div className={styles.cfd3dHeader}>
+                  <h2 className={styles.h2}>
+                    Steady 3-D Navier–Stokes — {focus.id}
+                  </h2>
+                  <span className={styles.solverBadge}>FEM3D</span>
+                </div>
+                <figure className={styles.cfd3dFigure}>
+                  <img
+                    src={`/${focus.cfd3dImage}`}
+                    alt={`Wall shear stress and streamlines, case ${focus.id}`}
+                    className={styles.cfd3dImage}
+                    loading="lazy"
+                  />
+                  <figcaption className={styles.cfd3dCaption}>
+                    Aneurysm wall coloured by computed wall shear stress (Pa);
+                    streamlines seeded at the inlet plane and coloured by speed
+                    (m/s). Off-screen PyVista render at 1920×1440.
+                  </figcaption>
+                </figure>
+                {focus.cfd3dSummary && (
+                  <dl className={styles.cfd3dStats}>
+                    <div>
+                      <dt>Solver</dt>
+                      <dd>{focus.cfd3dSummary.solver}</dd>
+                    </div>
+                    <div>
+                      <dt>Tetrahedra</dt>
+                      <dd>{focus.cfd3dSummary.elements.toLocaleString()}</dd>
+                    </div>
+                    <div>
+                      <dt>Velocity DOFs</dt>
+                      <dd>
+                        {focus.cfd3dSummary.velocityDOFs.toLocaleString()}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Wall facets</dt>
+                      <dd>{focus.cfd3dSummary.wallFacets.toLocaleString()}</dd>
+                    </div>
+                    <div>
+                      <dt>TAWSS</dt>
+                      <dd>{focus.cfd3dSummary.tawssPa.toFixed(2)} Pa</dd>
+                    </div>
+                    <div>
+                      <dt>WSS p95</dt>
+                      <dd>{focus.cfd3dSummary.wssP95Pa.toFixed(2)} Pa</dd>
+                    </div>
+                    <div>
+                      <dt>|u|max</dt>
+                      <dd>{focus.cfd3dSummary.uMaxMs.toFixed(2)} m/s</dd>
+                    </div>
+                    <div>
+                      <dt>Inlet ⌀</dt>
+                      <dd>
+                        {(2 * focus.cfd3dSummary.inletRadiusMm).toFixed(2)} mm
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Solve+render</dt>
+                      <dd>{focus.cfd3dSummary.secondsPerCase.toFixed(0)} s</dd>
+                    </div>
+                  </dl>
+                )}
+              </div>
+            ) : null}
+
             <div className={styles.card}>
               <h2 className={styles.h2}>What you are looking at</h2>
               <p className={styles.pSm}>
@@ -208,19 +276,25 @@ export function HemodynamiXWorkbench() {
                 {focus.uncertaintySummary}
               </p>
             </div>
-            <div className={styles.card}>
-              <WallRiskHeatmap
-                grid={focus.grid}
-                selected={sel}
-                onSelect={(ci, si) => setSel({ ci, si })}
-              />
-            </div>
-            <div className={styles.card}>
-              <CenterlineTraces samples={focus.centerline} markerS={markerS} />
-            </div>
-            <div className={`${styles.card} ${styles.cardMuted}`}>
-              <ProbeReadout cell={selectedCell} streamIndex={sel.ci} nCols={nCols} />
-            </div>
+            {focus.grid.length > 0 && (
+              <div className={styles.card}>
+                <WallRiskHeatmap
+                  grid={focus.grid}
+                  selected={sel}
+                  onSelect={(ci, si) => setSel({ ci, si })}
+                />
+              </div>
+            )}
+            {focus.centerline.length > 0 && (
+              <div className={styles.card}>
+                <CenterlineTraces samples={focus.centerline} markerS={markerS} />
+              </div>
+            )}
+            {focus.grid.length > 0 && (
+              <div className={`${styles.card} ${styles.cardMuted}`}>
+                <ProbeReadout cell={selectedCell} streamIndex={sel.ci} nCols={nCols} />
+              </div>
+            )}
           </div>
         )}
 

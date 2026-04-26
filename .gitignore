@@ -18,6 +18,7 @@ __pycache__/
 data/anxplore_raw/
 data/cache/
 data/artifacts/
+data/render_test/
 
 # IDE
 .idea/

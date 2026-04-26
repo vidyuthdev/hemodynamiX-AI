@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 
@@ -31,6 +31,16 @@ class CohortCase:
     grid: List[List[dict]] = field(default_factory=list)
     centerline: List[dict] = field(default_factory=list)
     radius_profile: List[float] = field(default_factory=list)
+    # Path to the original AnXplore VTK on disk so the optional FEM3D
+    # pass can re-load and re-tetrahedralise it at full fidelity.
+    volume_path: Optional[Path] = None
+    # Hemodynamic solver used for this case ("womersley" by default; flipped
+    # to "fem3d" when the case is upgraded by the steady Navier-Stokes pass).
+    solver: str = "womersley"
+    # Relative URL of the rendered headline image (None unless FEM3D-rendered).
+    cfd3d_image: Optional[str] = None
+    # FEM3D-only diagnostics that we surface on the focus card.
+    cfd3d_summary: Optional[dict] = None
 
 
 def _assign_location(case_id: str, rng: np.random.Generator) -> str:
@@ -122,6 +132,7 @@ def build_cohort(
             features=feats,
             label=int(label),
             label_clean=int(clean_label),
+            volume_path=rm.volume_path,
         )
 
         if grid_quota > 0:

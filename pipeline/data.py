@@ -29,6 +29,7 @@ class RawMesh:
     surface: pv.PolyData   # cleaned, triangulated surface mesh
     raw_volume: float      # mesh volume in mm^3
     raw_area: float        # surface area in mm^2
+    volume_path: Optional[Path] = None   # original .vtk on disk (real meshes only)
 
 
 # -- AnXplore downloader -----------------------------------------------------
@@ -114,6 +115,7 @@ def load_real_meshes(paths: Iterable[Path]) -> List[RawMesh]:
                     surface=surf,
                     raw_volume=vol,
                     raw_area=float(surf.area),
+                    volume_path=p,
                 )
             )
         except Exception as e:

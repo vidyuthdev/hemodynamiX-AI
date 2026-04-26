@@ -25,11 +25,27 @@ export type Morphology = {
   volume: number;
 };
 
+export type Cfd3DSummary = {
+  solver: string;
+  elements: number;
+  velocityDOFs: number;
+  wallFacets: number;
+  tawssPa: number;
+  wssP95Pa: number;
+  uMaxMs: number;
+  inletRadiusMm: number;
+  renderPath: string;
+  secondsPerCase: number;
+};
+
+export type SolverKind = "womersley" | "fem3d";
+
 export type FocusCase = {
   id: string;
   source: CaseSource;
   location: AneurysmLocation;
   label: 0 | 1;
+  solver?: SolverKind;
   morphology: Morphology;
   narrativeBullets: string[];
   uncertaintySummary: string;
@@ -37,6 +53,8 @@ export type FocusCase = {
   grid: WallCell[][];
   centerline: CenterlineSample[];
   radiusProfile: number[];
+  cfd3dImage?: string | null;
+  cfd3dSummary?: Cfd3DSummary | null;
 };
 
 export type ClinicianActionKind =
@@ -83,6 +101,9 @@ export type CohortCase = {
   label: 0 | 1;
   labelClean?: 0 | 1;
   morphology?: Morphology;
+  solver?: SolverKind;
+  cfd3dImage?: string;
+  cfd3dSummary?: Cfd3DSummary;
 };
 
 export type Split = {
